@@ -1,0 +1,31 @@
+# =============================================================================
+# Foundry Prompt Agent - test-connections
+# =============================================================================
+# Declarative definition for a Foundry Prompt Agent that consumes the
+# BYO-gateway (APIM) connection created by the Demo-1 STD access contract.
+#
+# The model is referenced as "<connection-name>/<model-name>". At runtime the
+# agent resolves the model through the APIM gateway (dynamic discovery via
+# {target}/deployments) and infers via {target}/chat/completions (body-based).
+#
+# Deploy with:  python src/deploy_agent.py configs/<this-file>.yaml
+# (see src/deploy_agent.py for required env / az login)
+# =============================================================================
+
+# --- Foundry target (where the agent version is created) ---------------------
+foundry:
+  accountName: {foundry-resource-name}
+  projectName: {foundry-project-name}
+
+# --- Agent definition --------------------------------------------------------
+agent:
+  # Logical agent name (versions are created under this name)
+  name: test-agent
+
+  # Model reference: "<connection-name>/<model-name>"
+  # Demo-Demo1-STD-LLM is the APIM connection from the Demo-1 STD contract.
+  model: Demo-Demo1-DEV-LLM/gpt-4o
+
+  # System instructions for the agent
+  instructions: |
+    You are a helpful assistant. answer question in a concise and accurate manner but use a western accent.
