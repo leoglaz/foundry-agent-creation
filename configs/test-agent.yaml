@@ -14,8 +14,8 @@
 
 # --- Foundry target (where the agent version is created) ---------------------
 foundry:
-  accountName: {foundry-resource-name}
-  projectName: {foundry-project-name}
+  accountName: foundry-cxxx
+  projectName: project-1
 
 # --- Agent definition --------------------------------------------------------
 agent:
@@ -29,3 +29,13 @@ agent:
   # System instructions for the agent
   instructions: |
     You are a helpful assistant. answer question in a concise and accurate manner but use a western accent.
+    Only use the ms-learn-mcp tool if the user asks about Microsoft learning resources, and if you do, only return 1 result.
+
+
+  # Tools available to the agent.
+  #   type: mcp  -> connect to a remote MCP server (streamable HTTP)
+  tools:
+    - type: mcp
+      server_label: ms-learn
+      server_url: https://xxxxxxxx.azure-api.net/ms-learn-mcp
+      require_approval: never
