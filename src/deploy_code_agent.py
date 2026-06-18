@@ -87,7 +87,13 @@ def load_config(path: Path) -> dict:
 def build_client(account_name: str, project_name: str) -> AIProjectClient:
     endpoint = f"https://{account_name}.services.ai.azure.com/api/projects/{project_name}"
     print(f"-> Connecting to Foundry project: {endpoint}")
-    return AIProjectClient(endpoint=endpoint, credential=DefaultAzureCredential())
+    # Hosted agents are a preview feature; allow_preview opts in via the
+    # 'Foundry-Features: HostedAgents=V1Preview' header.
+    return AIProjectClient(
+        endpoint=endpoint,
+        credential=DefaultAzureCredential(),
+        allow_preview=True,
+    )
 
 
 def _is_excluded(rel_path: Path, excludes: list[str]) -> bool:

@@ -1,15 +1,15 @@
 # Pinned to the versions verified working locally. The `agent-framework`
 # meta-package is intentionally NOT listed: it drags in
 # agent-framework-orchestrations, whose agent-framework-core>=1.9.0 constraint
-# conflicts with the older core that the meta-package pins, breaking the remote
-# build. The code only imports agent_framework (core), agent_framework_foundry,
-# and agent_framework_foundry_hosting.
+# conflicts with the older core that the meta-package pins, breaking the build.
+# The code only imports agent_framework (core), agent_framework_foundry, and
+# agent_framework_foundry_hosting.
 agent-framework-core==1.8.1
 agent-framework-foundry==1.8.1
 agent-framework-foundry-hosting==1.0.0a260609
 # agent-framework-foundry-hosting imports `mcp` but does not declare it, so the
-# remote build skips it -> ModuleNotFoundError: No module named 'mcp'. Pin it
-# (and the agentserver runtime deps) explicitly.
+# build can skip it -> ModuleNotFoundError: No module named 'mcp'. Pin it (and
+# the agentserver runtime deps) explicitly.
 mcp==1.27.2
 azure-ai-agentserver-core==2.0.0b6
 azure-ai-agentserver-responses==1.0.0b7

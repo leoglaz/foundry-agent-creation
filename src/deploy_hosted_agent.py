@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+import time
 from pathlib import Path
 
 import yaml
@@ -64,7 +65,13 @@ def load_config(path: Path) -> dict:
 def build_client(account_name: str, project_name: str) -> AIProjectClient:
     endpoint = f"https://{account_name}.services.ai.azure.com/api/projects/{project_name}"
     print(f"-> Connecting to Foundry project: {endpoint}")
-    return AIProjectClient(endpoint=endpoint, credential=DefaultAzureCredential())
+    # Hosted agents are a preview feature; allow_preview opts in via the
+    # 'Foundry-Features: HostedAgents=V1Preview' header.
+    return AIProjectClient(
+        endpoint=endpoint,
+        credential=DefaultAzureCredential(),
+        allow_preview=True,
+    )
 
 
 def deploy(client: AIProjectClient, agent_cfg: dict):
@@ -88,16 +95,27 @@ def deploy(client: AIProjectClient, agent_cfg: dict):
     return agent
 
 
-def invoke(client: AIProjectClient, agent, message: str):
+def invoke(client: AIProjectClient, agent, message: str, wait_seconds: int = 300):
     print(f"-> Invoking agent with: {message!r}")
+    deadline = time.monotonic() + wait_seconds
     with client.get_openai_client() as openai_client:
-        conversation = openai_client.conversations.create(
-            items=[{"type": "message", "role": "user", "content": message}],
-        )
-        response = openai_client.responses.create(
-            conversation=conversation.id,
-            extra_body={"agent_reference": {"name": agent.name, "type": "agent_reference"}},
-        )
+        while True:
+            conversation = openai_client.conversations.create(
+                items=[{"type": "message", "role": "user", "content": message}],
+            )
+            try:
+                response = openai_client.responses.create(
+                    conversation=conversation.id,
+                    extra_body={"agent_reference": {"name": agent.name, "type": "agent_reference"}},
+                )
+                break
+            except Exception as exc:  # noqa: BLE001
+                # Container may still be starting up; retry until it's Running.
+                if "not in Running state" in str(exc) and time.monotonic() < deadline:
+                    print("   ...agent not Running yet; waiting 15s")
+                    time.sleep(15)
+                    continue
+                raise
         text = getattr(response, "output_text", None) or str(response)
     print(f"OK  Agent response: {text}")
     return text

@@ -1,5 +1,5 @@
 # =============================================================================
-# Foundry Hosted Agent (code-based) - Microsoft Agent Framework sample
+# Foundry Hosted Agent (image-based) - Microsoft Agent Framework sample
 # =============================================================================
 # A hosted agent IS your code. Unlike a prompt agent, the system instructions
 # and the tools/MCP servers are NOT declared in the deployment YAML -- they are
@@ -10,8 +10,9 @@
 #                             tools are reached through a single Foundry Toolbox
 #                             MCP endpoint (env var TOOLBOX_ENDPOINT).
 #
-# Deployed WITHOUT a Docker image: the folder is zipped and uploaded to Foundry,
-# which builds and runs it for you (see src/deploy_code_agent.py).
+# Deployed AS A CONTAINER IMAGE: this folder is built into a Docker image,
+# pushed to ACR, and run by Foundry (see scripts/build-deploy-hosted-agent.sh
+# and src/deploy_hosted_agent.py).
 #
 # The hosting adapter (ResponsesHostServer) starts an HTTP server on port 8088
 # and exposes the OpenAI-compatible `responses` protocol. `server.run()` MUST be
@@ -31,7 +32,7 @@ from dotenv import load_dotenv
 load_dotenv(override=False)
 
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("code-agent")
+logger = logging.getLogger("hosted-agent")
 
 # -----------------------------------------------------------------------------
 # 1) SYSTEM INSTRUCTIONS
@@ -107,7 +108,7 @@ def build_agent() -> Agent:
         client=chat_client,
         instructions=SYSTEM_INSTRUCTIONS,
         tools=tools,
-        name="code-agent",
+        name="hosted-agent",
     )
 
 

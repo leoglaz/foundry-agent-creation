@@ -1,7 +1,7 @@
 # =============================================================================
 # Container image for the Foundry Hosted Agent (image-based path)
 # =============================================================================
-# Builds the code-agent into a container that speaks the Foundry `responses`
+# Builds the hosted-agent into a container that speaks the Foundry `responses`
 # protocol. ResponsesHostServer listens on port 8088 (see main.py).
 #
 # Build/push with: scripts/build-deploy-hosted-agent.sh

@@ -18,7 +18,7 @@
 #   NEW_TAG=1 scripts/build-deploy-hosted-agent.sh   # stamp a fresh timestamp tag
 #
 # Env vars:
-#   CONTEXT     Docker build context (default: <repo>/agents/code-agent)
+#   CONTEXT     Docker build context (default: <repo>/agents/hosted-agent)
 #   NEW_TAG     If set to 1, replace the image tag with a UTC timestamp and
 #               rewrite the config before building/deploying.
 #   PYTHON      Python interpreter to bootstrap the venv (default: python3)
@@ -44,7 +44,7 @@ if [[ ! -f "${CONFIG_PATH}" ]]; then
   exit 1
 fi
 
-CONTEXT="${CONTEXT:-${REPO_ROOT}/agents/code-agent}"
+CONTEXT="${CONTEXT:-${REPO_ROOT}/agents/hosted-agent}"
 PYTHON="${PYTHON:-python3}"
 VENV_DIR="${VENV_DIR:-${REPO_ROOT}/.venv}"
 REQUIREMENTS="${REPO_ROOT}/requirements.txt"
