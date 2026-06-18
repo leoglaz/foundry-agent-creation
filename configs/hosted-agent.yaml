@@ -1,0 +1,44 @@
+# =============================================================================
+# Foundry Hosted Agent - example
+# =============================================================================
+# Declarative definition for a Foundry Hosted Agent. A hosted agent runs your
+# own container image inside the Foundry project and exposes one or more
+# ingress protocols (responses, invocations, invocations_ws, mcp).
+#
+# Prerequisites:
+#   - The container image must already be built and pushed to an ACR that the
+#     Foundry project's managed identity can pull from.
+#     (e.g. az acr build --registry <acr> --image <repo>:<tag> --platform linux/amd64 .)
+#
+# Deploy with:  python src/deploy_hosted_agent.py configs/hosted-agent.yaml
+# (see src/deploy_hosted_agent.py for required env / az login)
+# =============================================================================
+
+# --- Foundry target (where the agent version is created) ---------------------
+foundry:
+  accountName: xxxxxxxx
+  projectName: project-1
+
+# --- Agent definition --------------------------------------------------------
+agent:
+  # Logical agent name (versions are created under this name)
+  name: my-hosted-agent
+
+  # Fully-qualified container image, including tag.
+  # Use a unique, immutable tag (e.g. a timestamp) - never "latest".
+  image: xxxxxxxx.azurecr.io/my-hosted-agent:xxxxxx
+
+  # Container resource allocation
+  cpu: "1"        # CPU cores, e.g. "0.5", "1", "2"
+  memory: "2Gi"   # Memory, e.g. "1Gi", "2Gi"
+
+  # Ingress protocols the container speaks. Use the version declared by the
+  # agent source itself (agent.yaml / agent.manifest.yaml in the container).
+  protocols:
+    - protocol: responses   # responses | invocations | invocations_ws | mcp
+      version: v1
+
+  # Optional environment variables injected into the container.
+  # Do NOT set reserved names (FOUNDRY_*, AGENT_*, PORT, HOME, etc.).
+  environment_variables: {}
+    # MY_SETTING: value
