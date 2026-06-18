@@ -69,9 +69,9 @@ else {
         Write-Host "-> Creating virtualenv: $VenvDir"
         & $Python -m venv $VenvDir
         $VenvPython = if ($IsWindows) { Join-Path $VenvDir 'Scripts/python.exe' } else { Join-Path $VenvDir 'bin/python' }
-        & $VenvPython -m pip install --upgrade pip | Out-Null
+        & $VenvPython -m pip install --upgrade pip --root-user-action=ignore | Out-Null
         Write-Host '-> Installing requirements'
-        & $VenvPython -m pip install -r $Requirements
+        & $VenvPython -m pip install -r $Requirements --root-user-action=ignore
     }
     $Py = if ($IsWindows) { Join-Path $VenvDir 'Scripts/python.exe' } else { Join-Path $VenvDir 'bin/python' }
 }

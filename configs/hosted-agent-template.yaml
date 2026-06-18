@@ -1,0 +1,64 @@
+# =============================================================================
+# Foundry Hosted Agent - example
+# =============================================================================
+# Declarative definition for a Foundry Hosted Agent. A hosted agent runs your
+# own container image inside the Foundry project and exposes one or more
+# ingress protocols (responses, invocations, invocations_ws, mcp).
+#
+# Prerequisites:
+#   - The container image must already be built and pushed to an ACR.
+#     (e.g. az acr build --registry <acr> --image <repo>:<tag> --platform linux/amd64 .)
+#   - The Foundry PROJECT's system-assigned managed identity must have AcrPull
+#     on that ACR, and the registry's ARM-audience AAD auth policy must be
+#     enabled. Foundry uses the PROJECT identity (not the account identity) to
+#     pull the image; without it the version fails with
+#     [ImageError] Failed to pull container image.
+#     The build-deploy script wires this up automatically (see below).
+#   - The ACR must be reachable over its public endpoint (private-endpoint-only
+#     registries are not currently supported for hosted agents).
+#
+# Recommended deploy (handles build + RBAC + version creation):
+#   scripts/build-deploy-hosted-agent.sh configs/hosted-agent.yaml
+#
+# Or deploy the version only (image already built, permissions already set):
+#   python src/deploy_hosted_agent.py configs/hosted-agent.yaml
+# (see src/deploy_hosted_agent.py for required env / az login)
+# =============================================================================
+
+# --- Foundry target (where the agent version is created) ---------------------
+foundry:
+  accountName: {foundry-resource}
+  projectName: {foundry-project}
+
+# --- Agent definition --------------------------------------------------------
+agent:
+  # Logical agent name (versions are created under this name)
+  name: {agent-name}
+
+  # Fully-qualified container image, including tag.
+  # Use a unique, immutable tag (e.g. a timestamp) - never "latest".
+  image: {acrid}.azurecr.io/{image-name}:{image-tag}
+
+  # Container resource allocation
+  cpu: "1"        # CPU cores, e.g. "0.5", "1", "2"
+  memory: "2Gi"   # Memory, e.g. "1Gi", "2Gi"
+
+  # Ingress protocols the container speaks. Use the version declared by the
+  # agent source itself. The agent-framework hosting adapter speaks the
+  # `responses` protocol at version 1.0.0 (see azure-ai-agentserver-responses),
+  # so the declared version MUST be 1.0.0 -- declaring "v1" makes Foundry's
+  # protocol handshake fail and the agent never reaches Running state.
+  protocols:
+    - protocol: responses   # responses | invocations | invocations_ws | mcp
+      version: 1.0.0
+
+  # Optional environment variables injected into the container.
+  # Do NOT set reserved names (FOUNDRY_*, AGENT_*, PORT, HOME, etc.).
+  # Model reference uses the "<connection-name>/<model-name>" form; passed via
+  # the non-reserved MODEL_DEPLOYMENT_NAME because FOUNDRY_* is reserved.
+  environment_variables:
+    MODEL_DEPLOYMENT_NAME: Demo-Demo1-DEV-LLM/gpt-4o
+    # Foundry injects FOUNDRY_PROJECT_ENDPOINT for code-based agents but NOT for
+    # image-based hosted agents, and FOUNDRY_* is reserved. Pass the project
+    # endpoint via the non-reserved PROJECT_ENDPOINT var instead.
+    PROJECT_ENDPOINT: https://{foundry-resource}.services.ai.azure.com/api/projects/{foundry-project}
