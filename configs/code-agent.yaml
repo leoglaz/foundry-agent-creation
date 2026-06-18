@@ -1,0 +1,69 @@
+# =============================================================================
+# Foundry Hosted Agent (code-based / no Docker) - sample
+# =============================================================================
+# Deploys a hosted agent directly from source code. No Docker image and no ACR:
+# src/deploy_code_agent.py zips the source folder and uploads it, and Foundry
+# builds + runs it for you.
+#
+# Deploy with:  python src/deploy_code_agent.py configs/code-agent.yaml
+# =============================================================================
+
+# --- Foundry target (where the agent version is created) ---------------------
+foundry:
+  accountName: xxxxxxxxx
+  projectName: project-1
+
+# --- Agent definition --------------------------------------------------------
+agent:
+  # Logical agent name (versions are created under this name)
+  name: code-agent
+
+  description: Code-based hosted agent deployed without Docker
+
+  # Folder containing the agent source, RELATIVE TO THIS CONFIG FILE.
+  # It must contain the entry point and (for remote_build) a requirements.txt.
+  sourceDir: ../agents/code-agent
+
+  # Runtime the service uses to run your code.
+  # Known supported values: python_3_13, python_3_14, dotnet_10
+  runtime: python_3_13
+
+  # Command + args the service runs to start your agent (must serve on 8088).
+  entryPoint: ["python", "main.py"]
+
+  # How dependencies are resolved:
+  #   remote_build - service installs from requirements.txt in the zip (default)
+  #   bundled      - you vendored all deps into the zip yourself
+  dependencyResolution: remote_build
+
+  # Container resource allocation
+  cpu: "1"        # CPU cores, e.g. "0.5", "1", "2"
+  memory: "2Gi"   # Memory, e.g. "1Gi", "2Gi"
+
+  # Ingress protocols the code speaks. Keep aligned with the agent source.
+  protocols:
+    - protocol: responses
+      version: 1.0.0
+
+  # Optional extra files/globs to exclude from the uploaded zip
+  # (sensible defaults like .venv, __pycache__, .git are always excluded).
+  exclude: []
+
+  # Optional environment variables injected into the runtime.
+  # Do NOT set reserved names (FOUNDRY_*, AGENT_*, PORT, HOME, etc.) -- Foundry
+  # injects FOUNDRY_PROJECT_ENDPOINT for you. Because FOUNDRY_* is reserved, the
+  # model is passed via the non-reserved MODEL_DEPLOYMENT_NAME var instead.
+  #
+  # Model reference uses the same "<connection-name>/<model-name>" form as the
+  # prompt agents -- Demo-Demo1-STD-LLM is the APIM (BYO gateway) connection.
+  #
+  # To give the agent tools, create a Foundry Toolbox (Foundry Portal or the
+  # Foundry Toolkit in VS Code) and set its MCP endpoint as TOOLBOX_ENDPOINT.
+  # main.py reads it and wires it as an MCP tool.
+  environment_variables:
+    MODEL_DEPLOYMENT_NAME: Demo-Demo1-STD-LLM/gpt-4o
+    # Direct MCP server (streamable HTTP). main.py reads MCP_SERVER_URL and
+    # wires it as an MCP tool labelled MCP_SERVER_LABEL.
+    MCP_SERVER_URL: https://apim-xxxxxxxxxxxxxx.azure-api.net/ms-learn-mcp
+    MCP_SERVER_LABEL: ms-learn
+    # TOOLBOX_ENDPOINT: https://<your-toolbox-mcp-endpoint>

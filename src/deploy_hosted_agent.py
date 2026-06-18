@@ -1,24 +1,22 @@
 #!/usr/bin/env python3
 """
-Deploy (and optionally invoke) a Foundry Prompt Agent from an agent.yaml file.
+Deploy (and optionally invoke) a Foundry Hosted Agent from an agent.yaml file.
 
-Creates a versioned Prompt Agent in an Azure AI Foundry project that references
-a model exposed through the BYO-gateway (APIM) connection, using the verified
-pattern:  project_client.agents.create_version(PromptAgentDefinition(model=...)).
+Creates a versioned Hosted Agent in an Azure AI Foundry project that runs a
+custom container image, using the verified pattern:
+    project_client.agents.create_version(HostedAgentDefinition(...))
+
+A hosted agent runs your own container image inside the Foundry project and
+exposes one or more ingress protocols (responses, invocations, invocations_ws,
+mcp). The image must already be built and pushed to an ACR that the Foundry
+project's managed identity can pull from.
 
 Usage:
     az login                     # ensure DefaultAzureCredential can reach Foundry
     pip install -r requirements.txt
-    python src/deploy_agent.py configs/test-agent.yaml
-    python src/deploy_agent.py configs/test-agent.yaml --invoke "Are you ready?"
-    python src/deploy_agent.py configs/test-agent.yaml --delete
-
-    # or via the wrapper scripts (auto-create a venv + install requirements):
-    scripts/deploy-agent.sh  configs/test-agent.yaml
-    scripts/deploy-agent.ps1 configs/test-agent.yaml
-
-The agent model is referenced as "<connection-name>/<model-name>". At runtime
-Foundry resolves it through the APIM gateway's dynamic discovery endpoint.
+    python src/deploy_hosted_agent.py configs/hosted-agent.yaml
+    python src/deploy_hosted_agent.py configs/hosted-agent.yaml --invoke "Hello"
+    python src/deploy_hosted_agent.py configs/hosted-agent.yaml --delete
 """
 
 from __future__ import annotations
@@ -30,7 +28,11 @@ from pathlib import Path
 import yaml
 from azure.identity import DefaultAzureCredential
 from azure.ai.projects import AIProjectClient
-from azure.ai.projects.models import MCPTool, PromptAgentDefinition
+from azure.ai.projects.models import (
+    HostedAgentDefinition,
+    ContainerConfiguration,
+    ProtocolVersionRecord,
+)
 
 
 def load_config(path: Path) -> dict:
@@ -45,9 +47,17 @@ def load_config(path: Path) -> dict:
     for key in ("accountName", "projectName"):
         if not cfg["foundry"].get(key):
             sys.exit(f"ERROR: foundry.{key} missing in {path}")
-    for key in ("name", "model", "instructions"):
+    for key in ("name", "image", "cpu", "memory", "protocols"):
         if not cfg["agent"].get(key):
             sys.exit(f"ERROR: agent.{key} missing in {path}")
+
+    protocols = cfg["agent"]["protocols"]
+    if not isinstance(protocols, list) or not protocols:
+        sys.exit(f"ERROR: agent.protocols must be a non-empty list in {path}")
+    for entry in protocols:
+        for key in ("protocol", "version"):
+            if not entry.get(key):
+                sys.exit(f"ERROR: each agent.protocols entry needs '{key}' in {path}")
     return cfg
 
 
@@ -57,37 +67,21 @@ def build_client(account_name: str, project_name: str) -> AIProjectClient:
     return AIProjectClient(endpoint=endpoint, credential=DefaultAzureCredential())
 
 
-def build_tools(agent_cfg: dict) -> list:
-    """Build tool objects from the agent config's optional `tools` list."""
-    tools = []
-    for tool in agent_cfg.get("tools") or []:
-        kind = tool.get("type")
-        if kind == "mcp":
-            tools.append(
-                MCPTool(
-                    server_label=tool["server_label"],
-                    server_url=tool["server_url"],
-                    require_approval=tool.get("require_approval", "never"),
-                    allowed_tools=tool.get("allowed_tools"),
-                )
-            )
-        else:
-            sys.exit(f"ERROR: unsupported tool type '{kind}' in config")
-    return tools
-
-
 def deploy(client: AIProjectClient, agent_cfg: dict):
     name = agent_cfg["name"]
-    model = agent_cfg["model"]
-    tools = build_tools(agent_cfg)
-    print(f"-> Creating/updating agent version: name={name}, model={model}, "
-          f"tools={len(tools)}")
+    image = agent_cfg["image"]
+    print(f"-> Creating/updating hosted agent version: name={name}, image={image}")
     agent = client.agents.create_version(
         agent_name=name,
-        definition=PromptAgentDefinition(
-            model=model,
-            instructions=agent_cfg["instructions"],
-            tools=tools or None,
+        definition=HostedAgentDefinition(
+            cpu=str(agent_cfg["cpu"]),
+            memory=str(agent_cfg["memory"]),
+            container_configuration=ContainerConfiguration(image=image),
+            protocol_versions=[
+                ProtocolVersionRecord(protocol=p["protocol"], version=p["version"])
+                for p in agent_cfg["protocols"]
+            ],
+            environment_variables=agent_cfg.get("environment_variables") or {},
         ),
     )
     print(f"OK  Agent version created: id={agent.id}, name={agent.name}, version={agent.version}")
@@ -120,9 +114,9 @@ def delete_latest(client: AIProjectClient, name: str):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Deploy a Foundry Prompt Agent from agent.yaml")
+    parser = argparse.ArgumentParser(description="Deploy a Foundry Hosted Agent from agent.yaml")
     parser.add_argument("agent_file",
-                        help="Path to the agent.yaml file describing the agent to deploy")
+                        help="Path to the agent.yaml file describing the hosted agent to deploy")
     parser.add_argument("--invoke", metavar="MESSAGE", nargs="?", const="Reply with one word: READY",
                         help="Smoke-test the agent after deploy (optional custom message)")
     parser.add_argument("--delete", action="store_true",
